@@ -47,7 +47,7 @@ public:
 	* Return TRUE if the check passes.
 	* Note that, in a well-formed circuit, enumeration of gates can be done by starting from in and traveling by output vector
 	*/
-	bool check() const;
+	void check() const;
 
 	/*
 	* Clear all "ready_inputs" mark
@@ -79,7 +79,7 @@ class gate {
 	*/
 public:
 	enum gate_type {
-		AND, OR, XOR, INPUT, OUTPUT, END_OT_TYPE
+		AND, OR, XOR, INPUT, END_OT_TYPE
 		// for OUTPUT gates, the only non-nullptr wire should be input[0]
 	};
 	gate();
@@ -87,10 +87,9 @@ public:
 
 	/*
 	* To check if the gate is connected "reasonably":
-	*     1. if the gate (except input gate) has two input wires connected
-	*     2. if each gate (except output gate) has its output vector non-empty
+	*     if the gate (except input gate) has two input wires connected
 	*/
-	bool check() const;
+	void check() const;
 	
 	/*
 	* Try to connect the gate in parameter as an input gate; try input[0] first, [1] second, FAIL third.
@@ -121,3 +120,5 @@ protected:
 	*/
 	void disconnect(gate* g);
 };
+
+void demo_circuit();

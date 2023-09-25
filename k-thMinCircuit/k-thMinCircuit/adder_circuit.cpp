@@ -14,13 +14,13 @@ adder_circuit::adder_circuit()
 	gand[1]->concat(gxor[0], in[2]);
 	gor->concat(gand[0], gand[1]);
 
-	out[0]->concat(gxor[1]);
-	out[1]->concat(gor);
+	out[0] = gxor[1];
+	out[1] = gor;
 }
 
 void demo_adder() {
 	adder_circuit C;
-	std::cout << C.check() << std::endl;
+	C.check();
 	for (int i(0); i != 2; ++i) {
 		for (int j(0); j != 2; ++j) {
 			for (int k(0); k != 2; ++k) {

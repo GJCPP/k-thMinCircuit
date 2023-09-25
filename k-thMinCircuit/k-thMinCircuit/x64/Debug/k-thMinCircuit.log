@@ -1,4 +1,4 @@
 ﻿  bitadder_circuit.cpp
-C:\Users\GJC\Desktop\大四上\20230920_k-th min电路\k-thMinCircuit\k-thMinCircuit\k-thMinCircuit\bitadder_circuit.cpp(100,3): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
-C:\Users\GJC\Desktop\大四上\20230920_k-th min电路\k-thMinCircuit\k-thMinCircuit\k-thMinCircuit\bitadder_circuit.cpp(105,4): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+C:\Users\GJC\Desktop\大四上\20230920_k-th min电路\k-thMinCircuit\k-thMinCircuit\k-thMinCircuit\bitadder_circuit.cpp(102,3): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+C:\Users\GJC\Desktop\大四上\20230920_k-th min电路\k-thMinCircuit\k-thMinCircuit\k-thMinCircuit\bitadder_circuit.cpp(107,3): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
   k-thMinCircuit.vcxproj -> C:\Users\GJC\Desktop\大四上\20230920_k-th min电路\k-thMinCircuit\k-thMinCircuit\x64\Debug\k-thMinCircuit.exe

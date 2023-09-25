@@ -21,8 +21,8 @@ bitadder_circuit::bitadder_circuit(int n)
 		gate* gand(new gate(gate::AND)), * gxor(new gate(gate::XOR));
 		gand->concat(in[0], in[1]);
 		gxor->concat(in[0], in[1]);
-		out[0]->concat(gxor);
-		out[1]->concat(gand);
+		out[0] = gxor;
+		out[1] = gand;
 		return;
 	}
 	if (n == 3) {
@@ -44,18 +44,18 @@ bitadder_circuit::bitadder_circuit(int n)
 	gate *gxor = new gate(gate::XOR), *gand = new gate(gate::AND);
 	gxor->concat(C1.out[0], C2.out[0]);
 	gand->concat(C1.out[0], C2.out[0]);
-	out[0]->concat(gxor);
+	out[0] = gxor;
 
 	// Second, use full adder with carry bit
 	gate* carry = gand;
 	int i(1);
-	for (; i != C2.in.size(); ++i) {
-		if (i < C1.in.size()) {
+	for (; i != C2.out.size(); ++i) {
+		if (i < C1.out.size()) {
 			adder_circuit adder;
 			adder.in[0]->concat(C1.out[i]);
 			adder.in[1]->concat(C2.out[i]);
 			adder.in[2]->concat(carry);
-			out[i]->concat(adder.out[0]);
+			out[i] = adder.out[0];
 			carry = adder.out[1];
 			adder.moderate_clear();
 		} else {
@@ -63,13 +63,13 @@ bitadder_circuit::bitadder_circuit(int n)
 			gate* gxor = new gate(gate::XOR), * gand = new gate(gate::AND);
 			gxor->concat(carry, C2.out[i]);
 			gand->concat(carry, C2.out[i]);
-			out[i]->concat(gxor);
+			out[i] = gxor;
 			carry = gand;
 		}
 	}
 	if (i != out.size()) {
 		// This means that it's possible that carry != 0
-		out[i]->concat(carry);
+		out[i] = carry;
 	}
 
 	// Last, transfer the input of C1 C2 to **this**
@@ -85,11 +85,13 @@ bitadder_circuit::bitadder_circuit(int n)
 }
 
 void demo_bitadder() {
-	int n = 4;
+	int n = 7;
 	bitadder_circuit C(n);
 	std::vector<bool> vec(n, 0);
-	for (int i(0); i != (1 << n); ++i) {
-		int val = i;
+	bool wronged = false;
+	for (int i(0); i != 8; ++i) {
+		int testval = rand() % (1 << n);
+		int val = testval;
 		for (int j(0); j != n; ++j) {
 			vec[j] = (val & 1);
 			val >>= 1;
@@ -99,11 +101,11 @@ void demo_bitadder() {
 		for (int i : vec) ans += i;
 		for (int j(output.size() - 1); j != -1; --j) v = ((v << 1) | output[j]);
 
-		if (v != ans) {
-			for (int j(0); j != n; ++j) std::cout << vec[j] << ' ';
-			std::cout << ": ";
-			for (int j(output.size() - 1); j != -1; --j) std::cout << output[j] << ' ';
-			std::cout << std::endl;
-		}
+		std::cout << ans << " | ";
+		for (int j(0); j != n; ++j) std::cout << vec[j] << ' ';
+		std::cout << ": ";
+		for (int j(output.size() - 1); j != -1; --j) std::cout << output[j] << ' ';
+		std::cout << "| " << v << std::endl;
+		wronged = true;
 	}
 }

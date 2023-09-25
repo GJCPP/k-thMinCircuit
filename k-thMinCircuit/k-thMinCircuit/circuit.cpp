@@ -23,11 +23,6 @@ circuit::circuit(const circuit& C) :
 		mapback[C.in[i]] = in[i];
 		que.push(in[i]);
 	}
-	for (int i(0); i != out.size(); ++i) {
-		mapto[out[i]] = C.out[i];
-		mapback[C.out[i]] = out[i];
-		que.push(out[i]);
-	}
 	while (!que.empty()) {
 		gate* now(que.front());
 		que.pop();
@@ -41,17 +36,6 @@ circuit::circuit(const circuit& C) :
 				left = mapback[right];
 			}
 			now->output.push_back(left);
-		}
-		for (int i(0); i != 2; ++i) {
-			const gate* right = cor->input[i];
-			gate* left(nullptr);
-			if (mapback.find(right) == mapback.end()) {
-				left = mapback[right] = new gate(right->type);
-				que.push(left);
-			} else {
-				left = mapback[right];
-			}
-			now->input[i] = left;
 		}
 	}
 }
@@ -101,30 +85,32 @@ circuit::~circuit() {
 	clear();
 }
 
-bool circuit::check() const {
+void circuit::check() const {
 	std::queue<const gate*> que;
-	std::set<const gate*> set, inout;
+	std::set<const gate*> set, setin, setout;
 	set.insert(nullptr);
 	for (const gate* g : out) {
-		if (g->type != gate::OUTPUT) return false;
-		que.push(g);
-		set.insert(g);
-		inout.insert(g);
+		setout.insert(g);
 	}
 	for (const gate* g : in) {
-		if (g->type != gate::INPUT) return false;
+		if (g->type != gate::INPUT) throw "Input gate is not of type INPUT.";
 		que.push(g);
 		set.insert(g);
-		inout.insert(g);
+		setin.insert(g);
 	}
 	while (!que.empty()) {
 		const gate* now(que.front());
 		que.pop();
-		if (now->check() == false) return false;
-		if (inout.find(now) == inout.end()) {
-			if (now->type == gate::INPUT || now->type == gate::OUTPUT) {
-				return false;
+		now->check();
+		if (now->output.empty()) {
+			bool flag = false;
+			for (gate* g : out) {
+				if (g == now) {
+					flag = true;
+					break;
+				}
 			}
+			if (!flag) throw "Output gate is not in output.";
 		}
 		for (const gate* g : now->output) {
 			if (set.find(g) == set.end()) {
@@ -132,14 +118,19 @@ bool circuit::check() const {
 				que.push(g);
 			}
 		}
-		for (int i(0); i != 2; ++i) {
-			if (set.find(now->input[i]) == set.end()) {
-				set.insert(now->input[i]);
-				que.push(now->input[i]);
+		if (now->type != gate::INPUT) {
+			for (int i(0); i != 2; ++i) {
+				bool flag = false;
+				for (gate* g : now->input[i]->output) {
+					if (g == now) {
+						flag = true;
+						break;
+					}
+				}
+				if (!flag) throw "A gate is not marked as output by its input gate.";
 			}
 		}
 	}
-	return true;
 }
 
 
@@ -201,8 +192,7 @@ std::vector<bool> circuit::eval(const std::vector<bool>& input) {
 	}
 	std::vector<bool> ret;
 	for (gate* g : out) {
-		if (g->ready_inputs != 1) return {};
-		ret.push_back(g->input[0]->val);
+		ret.push_back(g->val);
 	}
 	return ret;
 }
@@ -216,7 +206,7 @@ circuit::circuit(int fanin, int fanout)
 	: in(fanin, nullptr), out(fanout, nullptr)
 {
 	for (int i(0); i != fanin; ++i) in[i] = new gate(gate::INPUT);
-	for (int i(0); i != fanout; ++i) out[i] = new gate(gate::OUTPUT);
+	for (int i(0); i != fanout; ++i) out[i] = nullptr;
 }
 
 gate::gate()
@@ -228,34 +218,23 @@ gate::gate(gate_type t)
 	: input{}, output{}, type(t), ready_inputs(0), val(0) {
 }
 
-bool gate::check() const {
-	if (type < 0 && type >= END_OT_TYPE) return false;
+void gate::check() const {
+	if (type < 0 && type >= END_OT_TYPE) throw "Unknown gate.";
 	switch (type)
 	{
 	case INPUT:
-		if (input[0] != nullptr || input[1] != nullptr) return false;
-		if (output.empty()) return false;
-		break;
-	case OUTPUT:
-		if (input[0] == nullptr || input[1] != nullptr) return false;
-		if (!output.empty()) return false;
+		if (input[0] != nullptr || input[1] != nullptr) throw "Input gate missing.";
+			if (output.empty()) throw "Input gate not used.";
 		break;
 	default:
-		if (input[0] == nullptr || input[1] == nullptr) return false;
-		if (output.empty()) return false;
+		if (input[0] == nullptr || input[1] == nullptr) throw "Input gate missing.";
 		break;
 	}
-	return true;
 }
 
 void gate::concat(gate* g) {
 	if (g == nullptr) throw "Trying to connect to NULL.";
 	gate* tem = nullptr;
-	if (g->type == gate::OUTPUT) {
-		concat(g->input[0]);
-		delete g;
-		return;
-	}
 	if (type == gate::INPUT) {
 		if (output.empty()) throw "INPUT gate has no output.";
 		for (gate* out : output) {
@@ -273,7 +252,6 @@ void gate::concat(gate* g) {
 		if (tem) delete tem;
 		return;
 	} else {
-		if (type == OUTPUT) throw "OUTPUT gate has only one input.";
 		if (input[0] == g) throw "Trying to concat two same gates as input.";
 		if (input[1] == nullptr) {
 			input[1] = g;
@@ -287,15 +265,15 @@ void gate::concat(gate* g) {
 
 void gate::concat(gate* g1, gate* g2) {
 	if (input[0] != nullptr || input[1] != nullptr) throw "Input gates already connected.";
-	if (type == INPUT || type == OUTPUT) throw "Invalid gate concatenation.";
+	if (type == INPUT) throw "Invalid gate concatenation.";
 	concat(g1);
 	concat(g2);
 }
 
 void gate::disconnect(gate* g) {
 	if (input[0] == g) input[0] = nullptr;
-	if (input[1] == g) input[1] = nullptr;
-	throw "Nothing to be disconnected.";
+	else if (input[1] == g) input[1] = nullptr;
+	else throw "Nothing to be disconnected.";
 }
 
 void gate::init(gate* arr[], int sz, gate_type type) {
@@ -307,20 +285,16 @@ void gate::init(gate* arr[], int sz, gate_type type) {
 
 void demo_circuit() {
 	circuit C;
-	gate* gout(new gate(gate::OUTPUT));
 	gate* gand(new gate(gate::XOR));
 	gate* gin[2] = { new gate(gate::INPUT), new gate(gate::INPUT) };
-	C.out.push_back(gout);
+	C.out.push_back(gand);
 	C.in.push_back(gin[0]);
 	C.in.push_back(gin[1]);
 	gand->concat(gin[0]), gand->concat(gin[1]);
-	gout->concat(gand);
-	std::cout << C.check() << std::endl;
-	if (C.check()) {
-		for (int i(0); i != 2; ++i) {
-			for (int j(0); j != 2; ++j) {
-				std::cout << C.eval({ bool(i), bool(j) })[0] << std::endl;
-			}
+	C.check();
+	for (int i(0); i != 2; ++i) {
+		for (int j(0); j != 2; ++j) {
+			std::cout << C.eval({ bool(i), bool(j) })[0] << std::endl;
 		}
 	}
 }
