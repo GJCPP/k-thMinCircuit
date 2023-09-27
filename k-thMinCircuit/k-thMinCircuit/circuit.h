@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <queue>
+#include <string>
 class gate;
 class circuit {
 public:
@@ -37,15 +38,15 @@ public:
 	* To check if the circuit is well-formed.
 	* 
 	*     1. if every input gate is of type INPUT
-	*     2. if every output gate is of type OUTPUT
-	*     3. if every common gate is not of type INPUT/OUTPUT
-	*     4. if each gate (except input and output gate) has two input wires connected
-	*     5. if each output gate has exactly input[0] non-nullptr
-	*     6. if each gate (except output gate) has its output vector non-empty
+	*     2. if every common gate is not of type INPUT
+	*     3. if each gate is recorded as output by its input gates
+	*     4. if each gate (except INPUT) has two input wires connected
+	*     5. if each gate (except outputing one) has its output vector non-empty
 	* 
-	* The last three is done by gate::check()
-	* Return TRUE if the check passes.
-	* Note that, in a well-formed circuit, enumeration of gates can be done by starting from in and traveling by output vector
+	* The last two is done by gate::check()
+	* If check fail, it throws exception.
+	* Note that, in a well-formed circuit, enumeration of gates can be done by starting from in and traveling by output vector.
+	* I.e. the user is response for making sure that there is no loop in the circuit.
 	*/
 	void check() const;
 
@@ -56,9 +57,23 @@ public:
 	void clear_state();
 
 	/*
-	* The circuit must be well-formed
+	* To evaluate, the circuit must be well-formed.
 	*/
 	std::vector<bool> eval(const std::vector<bool>& input);
+
+
+	/*
+	* Count the size of the circuit.
+	* Note that this will not count in NOT gate and INPUT gate.
+	*/
+	int size() const;
+
+
+	/*
+	* Print the circuit; if it is evaluated, the state will also be printed.
+	* Enjoy debugging :)
+	*/
+	void print() const;
 
 
 	void copy_from(const circuit& C);
@@ -71,15 +86,17 @@ protected:
 	circuit(int fanin, int fanout);
 };
 
+
+
+/*
+* NOTE: Due to the design of ~circuit, you should only use "new gate(...)" to create gate object.
+* In particular, do not use new gate[](...).
+* You can use gate::init to initialize a gate pointer array.
+*/
 class gate {
-	/*
-	* NOTE: Due to the design of ~circuit, you should only use "new gate(...)" to create gate object.
-	* In particular, do not use new gate[](...).
-	* You can use gate::init to initialize a gate pointer array.
-	*/
 public:
 	enum gate_type {
-		AND, OR, XOR, INPUT, END_OT_TYPE
+		NOT, AND, OR, XOR, INPUT, END_OF_TYPE
 		// for OUTPUT gates, the only non-nullptr wire should be input[0]
 	};
 	gate();
@@ -93,8 +110,7 @@ public:
 	
 	/*
 	* Try to connect the gate in parameter as an input gate; try input[0] first, [1] second, FAIL third.
-	* In particular, if the gate is OUTPUT gate, this function will take its input[0] and delete that gate.
-	* If **this** gate is INPUT gate, it will turn concat g to all its output gates.
+	* If **this** gate is INPUT gate, it will try concat g to all its output gates.
 	* So please remind that if **this** gate is INPUT, it will be destroyed.
 	*/
 	void concat(gate *g);
@@ -106,6 +122,12 @@ public:
 	* This function calls operator new to allocate sz many gates.
 	*/
 	static void init(gate* arr[], int sz, gate_type type);
+
+	/*
+	* Return the type of the gate, e.g. "NOT"
+	*/
+	std::string name() const;
+
 
 	gate* input[2];
 	std::vector<gate*> output;

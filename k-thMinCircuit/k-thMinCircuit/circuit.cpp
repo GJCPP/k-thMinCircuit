@@ -120,6 +120,7 @@ void circuit::check() const {
 		}
 		if (now->type != gate::INPUT) {
 			for (int i(0); i != 2; ++i) {
+				if (now->type == gate::NOT && i) break;
 				bool flag = false;
 				for (gate* g : now->input[i]->output) {
 					if (g == now) {
@@ -187,6 +188,9 @@ std::vector<bool> circuit::eval(const std::vector<bool>& input) {
 					return {}; // ill-formed circuit.
 				}
 				que.push(g);
+			} else if (g->ready_inputs == 1 && g->type == gate::NOT) {
+				g->val = !g->input[0]->val;
+				que.push(g);
 			}
 		}
 	}
@@ -195,6 +199,67 @@ std::vector<bool> circuit::eval(const std::vector<bool>& input) {
 		ret.push_back(g->val);
 	}
 	return ret;
+}
+
+int circuit::size() const {
+	int sz = 0;
+	std::queue<gate*> que;
+	std::set<gate*> set;
+	for (gate* g : in) {
+		que.push(g);
+		set.insert(g);
+	}
+	while (!que.empty()) {
+		gate* now(que.front());
+		que.pop();
+		if (now->type != gate::INPUT && now->type != gate::NOT) {
+			++sz;
+		}
+		for (gate* g : now->output) {
+			if (set.find(g) == set.end()) {
+				que.push(g);
+				set.insert(g);
+			}
+		}
+	}
+	return sz;
+}
+
+void circuit::print() const {
+	int next_num(1);
+	std::map<const gate*, int> hash;
+	std::queue<const gate*> que;
+	std::set<const gate*> set;
+	for (auto g : in) {
+		hash[g] = next_num++;
+		que.push(g);
+		set.insert(g);
+	}
+	for (auto g : out) hash[g] = next_num++;
+	while (!que.empty()) {
+		const gate* now(que.front());
+		que.pop();
+		if (now->type != gate::INPUT) {
+			std::cout << hash[now->input[0]];
+			if (now->type != gate::NOT) {
+				std::cout << ", " << hash[now->input[1]] << " ";
+			}
+		}
+		std::cout << "--> " << hash[now] << " (" << now->name() << "=" << now->val << ") --> ";
+		if (now->output.empty()) {
+			std::cout << "OUTPUT" << std::endl;
+		} else {
+			for (auto g : now->output) {
+				if (set.find(g) == set.end()) {
+					if (hash.find(g) == hash.end()) hash[g] = next_num++;
+					que.push(g);
+					set.insert(g);
+				}
+				std::cout << hash[g] << ", ";
+			}
+			std::cout << std::endl;
+		}
+	}
 }
 
 void circuit::copy_from(const circuit& C) {
@@ -210,7 +275,7 @@ circuit::circuit(int fanin, int fanout)
 }
 
 gate::gate()
-	: input{}, output{}, type(END_OT_TYPE), ready_inputs(0), val(0)
+	: input{}, output{}, type(END_OF_TYPE), ready_inputs(0), val(0)
 {
 }
 
@@ -219,12 +284,15 @@ gate::gate(gate_type t)
 }
 
 void gate::check() const {
-	if (type < 0 && type >= END_OT_TYPE) throw "Unknown gate.";
+	if (type < 0 && type >= END_OF_TYPE) throw "Unknown gate.";
 	switch (type)
 	{
 	case INPUT:
 		if (input[0] != nullptr || input[1] != nullptr) throw "Input gate missing.";
 			if (output.empty()) throw "Input gate not used.";
+		break;
+	case NOT:
+		if (input[0] == nullptr || input[1] != nullptr) throw "NOT gate should have only one input.";
 		break;
 	default:
 		if (input[0] == nullptr || input[1] == nullptr) throw "Input gate missing.";
@@ -253,6 +321,7 @@ void gate::concat(gate* g) {
 		return;
 	} else {
 		if (input[0] == g) throw "Trying to concat two same gates as input.";
+		if (type == NOT) throw "NOT gate can only have one input.";
 		if (input[1] == nullptr) {
 			input[1] = g;
 			g->output.push_back(this);
@@ -280,6 +349,27 @@ void gate::init(gate* arr[], int sz, gate_type type) {
 	for (int i(0); i != sz; ++i) {
 		arr[i] = new gate(type);
 	}
+}
+
+std::string gate::name() const {
+	switch (type) {
+	case gate::NOT:
+		return "NOT";
+	case gate::AND:
+		return "AND";
+	case gate::OR:
+		return "OR";
+	case gate::XOR:
+		return "XOR";
+	case gate::INPUT:
+		return "INPUT";
+	case gate::END_OF_TYPE:
+		return "END_OF_TYPE";
+	default:
+		throw "Invaild gate type.";
+	}
+	throw "WTF have you done???";
+	return "";
 }
 
 

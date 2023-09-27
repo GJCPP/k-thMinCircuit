@@ -85,16 +85,13 @@ bitadder_circuit::bitadder_circuit(int n)
 }
 
 void demo_bitadder() {
-	int n = 7;
+	int n = 257;
 	bitadder_circuit C(n);
 	std::vector<bool> vec(n, 0);
 	bool wronged = false;
 	for (int i(0); i != 8; ++i) {
-		int testval = rand() % (1 << n);
-		int val = testval;
 		for (int j(0); j != n; ++j) {
-			vec[j] = (val & 1);
-			val >>= 1;
+			vec[j] = rand() % 2;
 		}
 		auto output = C.eval(vec);
 		int v = 0, ans = 0;
@@ -106,6 +103,12 @@ void demo_bitadder() {
 		std::cout << ": ";
 		for (int j(output.size() - 1); j != -1; --j) std::cout << output[j] << ' ';
 		std::cout << "| " << v << std::endl;
-		wronged = true;
+		if (ans != v)
+			wronged = true;
+	}
+	if (wronged) {
+		std::cout << "Bitadder wronged." << std::endl;
+	} else {
+		std::cout << "Bitadder passed." << std::endl;
 	}
 }
