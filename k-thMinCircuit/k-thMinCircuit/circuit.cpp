@@ -102,16 +102,6 @@ void circuit::check() const {
 		const gate* now(que.front());
 		que.pop();
 		now->check();
-		if (now->output.empty()) {
-			bool flag = false;
-			for (gate* g : out) {
-				if (g == now) {
-					flag = true;
-					break;
-				}
-			}
-			if (!flag) throw "Output gate is not in output.";
-		}
 		for (const gate* g : now->output) {
 			if (set.find(g) == set.end()) {
 				set.insert(g);
@@ -247,7 +237,15 @@ void circuit::print() const {
 		}
 		std::cout << "--> " << hash[now] << " (" << now->name() << "=" << now->val << ") --> ";
 		if (now->output.empty()) {
-			std::cout << "OUTPUT" << std::endl;
+			bool found(false);
+			for (auto g : out) {
+				if (g == now) {
+					found = true;
+					break;
+				}
+			}
+			if (found) std::cout << "OUTPUT" << std::endl;
+			else std::cout << "VOID" << std::endl;
 		} else {
 			for (auto g : now->output) {
 				if (set.find(g) == set.end()) {
@@ -257,6 +255,14 @@ void circuit::print() const {
 				}
 				std::cout << hash[g] << ", ";
 			}
+			bool found(false);
+			for (auto g : out) {
+				if (g == now) {
+					found = true;
+					break;
+				}
+			}
+			if (found) std::cout << "OUTPUT" << std::endl;
 			std::cout << std::endl;
 		}
 	}
@@ -351,20 +357,24 @@ void gate::init(gate* arr[], int sz, gate_type type) {
 	}
 }
 
+void gate::name(const std::string& newname) {
+	nm = newname;
+}
+
 std::string gate::name() const {
 	switch (type) {
 	case gate::NOT:
-		return "NOT";
+		return "NOT" + nm;
 	case gate::AND:
-		return "AND";
+		return "AND" + nm;
 	case gate::OR:
-		return "OR";
+		return "OR" + nm;
 	case gate::XOR:
-		return "XOR";
+		return "XOR" + nm;
 	case gate::INPUT:
-		return "INPUT";
+		return "INPUT" + nm;
 	case gate::END_OF_TYPE:
-		return "END_OF_TYPE";
+		return "END_OF_TYPE" + nm;
 	default:
 		throw "Invaild gate type.";
 	}

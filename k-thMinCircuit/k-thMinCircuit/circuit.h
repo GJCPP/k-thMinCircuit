@@ -126,6 +126,7 @@ public:
 	/*
 	* Return the type of the gate, e.g. "NOT"
 	*/
+	void name(const std::string& newname);
 	std::string name() const;
 
 
@@ -134,7 +135,7 @@ public:
 	int ready_inputs;
 	bool val;
 	gate_type type;
-
+	std::string nm;
 protected:
 
 	/*
