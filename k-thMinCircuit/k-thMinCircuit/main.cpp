@@ -9,7 +9,6 @@
 #include "selector.h"
 
 int main() {
-	srand(123);
 	//demo_circuit();
 	//demo_adder();
 	//demo_bitadder();
@@ -18,6 +17,7 @@ int main() {
 	//test_int_adder();
 	//test_exint_adder();
 	//test_selector();
+	//test_kmin();
 	test_kmin_circuit();
 	return 0;
 }

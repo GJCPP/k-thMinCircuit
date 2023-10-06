@@ -23,7 +23,7 @@ std::vector<bool> kmin(std::vector<bool> x[], int n, int k) {
 			int v = (x[j][i] || dead[j]);
 			if (v == 0) ++cnt;
 		}
-		if (cnt + strict_less <= k) {
+		if (cnt + strict_less < k) {
 			ret.push_back(1);
 			strict_less += cnt;
 		} else {
@@ -37,15 +37,15 @@ std::vector<bool> kmin(std::vector<bool> x[], int n, int k) {
 }
 
 void test_kmin() {
-	const int n = 100, l = 32;
+	const int n = 1000, l = 20;
 	bool flag = false;
 	std::vector<int> x(n, 0);
 	std::vector<bool> bx[n];
 	for (int i(0); i != n; ++i) bx[i].resize(l, false);
 	for (int _(0); _ != 20; ++_) {
-		int k = rand() % n;
+		int k = rand() % n + 1;
 		for (int i(0); i != n; ++i) {
-			x[i] = rand();
+			x[i] = rand() % (1 << l);
 			for (int j(0); j != l; ++j) {
 				bx[i][l - j - 1] = ((x[i] >> j) & 1);
 			}
@@ -56,7 +56,7 @@ void test_kmin() {
 			ians += ((ans[i] ? 1 : 0) << (l - i - 1));
 		}
 		std::sort(x.begin(), x.end());
-		if (x[k] != ians) {
+		if (x[k - 1] != ians) {
 			std::cout << "Wronged." << std::endl;
 			flag = true;
 			break;
@@ -110,18 +110,17 @@ kmin_circuit::kmin_circuit(int n, int l)
 		compare_circuit comp(logn);
 		for (int j(0); j != logn; ++j) comp.in[j]->concat(sum[j]);
 		for (int j(0); j != logn; ++j) comp.in[j + logn]->concat(k[j]);
-		gate* leq = new gate(gate::NOT);
-		leq->concat(comp.out[1]); // less or equal
+		gate* lesser = comp.out[0];
 		comp.moderate_clear();
 
 
-		out[i] = leq;
-		out[i]->name(std::string("-leq") + char(i+'0'));
+		out[i] = lesser;
+		out[i]->name(std::string("-lesser") + char(i+'0'));
 
 
 		// use leq to select new value for strict_less
 		selector sel(logn);
-		sel.in[logn * 2]->concat(leq);
+		sel.in[logn * 2]->concat(lesser);
 		// if leq == false, remain unchanged
 		for (int j(0); j != logn; ++j) sel.in[j]->concat(strict_less[j]);
 		// if leq == true, select the "added" value
@@ -141,6 +140,7 @@ kmin_circuit::kmin_circuit(int n, int l)
 			}
 		}
 	}
+	remove_void();
 }
 
 void test_kmin_circuit() {
@@ -156,13 +156,14 @@ void test_kmin_circuit() {
 		val[i].resize(l, false);
 	}
 	k.resize(logn, false);
-	for (int _(0); _ != 20; ++_) {
+	for (int _(0); _ != 2000; ++_) {
+		//std::cout << _ << std::endl;
 		for (int i(0); i != n; ++i) {
 			for (int j(0); j != l; ++j) {
 				val[i][j] = rand() % 2;
 			}
 		}
-		ik = rand() % n;
+		ik = rand() % n + 1;
 		std::vector<bool> input;
 		for (int i(0); i != n; ++i) {
 			for (int j(0); j != l; ++j) {

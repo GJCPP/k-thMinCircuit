@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include <set>
+#include <unordered_set>
 #include <queue>
 #include <string>
 class gate;
@@ -75,6 +75,17 @@ public:
 	*/
 	void print() const;
 
+	/*
+	* Remove every gate that is not output gate, and does not have its output wire connected.
+	*/
+	void remove_void();
+
+
+	/*
+	* Output the entire circuit. If you would like to save it?
+	*/
+	void save(std::ostream& stream);
+
 
 	void copy_from(const circuit& C);
 
@@ -128,6 +139,7 @@ public:
 	*/
 	void name(const std::string& newname);
 	std::string name() const;
+	std::string type_name() const;
 
 
 	gate* input[2];

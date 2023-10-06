@@ -43,7 +43,7 @@ circuit::circuit(const circuit& C) :
 // Deconstruct all gates in the circuit.
 void circuit::clear() {
 	std::queue<gate*> que;
-	std::set<gate*> set;
+	std::unordered_set<gate*> set;
 	set.insert(nullptr);
 	for (gate* g : in) {
 		que.push(g);
@@ -87,7 +87,7 @@ circuit::~circuit() {
 
 void circuit::check() const {
 	std::queue<const gate*> que;
-	std::set<const gate*> set, setin, setout;
+	std::unordered_set<const gate*> set, setin, setout;
 	set.insert(nullptr);
 	for (const gate* g : out) {
 		setout.insert(g);
@@ -128,7 +128,7 @@ void circuit::check() const {
 
 void circuit::clear_state() {
 	std::queue<gate*> que;
-	std::set<gate*> set;
+	std::unordered_set<gate*> set;
 	set.insert(nullptr);
 	for (gate* g : in) {
 		que.push(g);
@@ -150,7 +150,7 @@ void circuit::clear_state() {
 std::vector<bool> circuit::eval(const std::vector<bool>& input) {
 	if (in.size() != input.size()) return {}; // invalid input.
 	if (out.empty()) return {}; // nothing to output.
-	clear_state();
+	// clear_state();
 	std::queue<gate*> que;
 	for (int i(0); i != in.size(); ++i) {
 		gate* g = in[i];
@@ -194,7 +194,7 @@ std::vector<bool> circuit::eval(const std::vector<bool>& input) {
 int circuit::size() const {
 	int sz = 0;
 	std::queue<gate*> que;
-	std::set<gate*> set;
+	std::unordered_set<gate*> set;
 	for (gate* g : in) {
 		que.push(g);
 		set.insert(g);
@@ -219,7 +219,7 @@ void circuit::print() const {
 	int next_num(1);
 	std::map<const gate*, int> hash;
 	std::queue<const gate*> que;
-	std::set<const gate*> set;
+	std::unordered_set<const gate*> set;
 	for (auto g : in) {
 		hash[g] = next_num++;
 		que.push(g);
@@ -229,13 +229,55 @@ void circuit::print() const {
 	while (!que.empty()) {
 		const gate* now(que.front());
 		que.pop();
-		if (now->type != gate::INPUT) {
-			std::cout << hash[now->input[0]];
-			if (now->type != gate::NOT) {
-				std::cout << ", " << hash[now->input[1]] << " ";
+
+		std::cout << hash[now] << " (" << now->name() << "=" << now->val << ") --> ";
+
+		for (auto g : now->output) {
+			if (set.find(g) == set.end()) {
+				if (hash.find(g) == hash.end()) hash[g] = next_num++;
+				que.push(g);
+				set.insert(g);
+			}
+			std::cout << hash[g] << " ";
+		}
+		bool found(false);
+		for (auto g : out) {
+			if (g == now) {
+				found = true;
+				break;
 			}
 		}
-		std::cout << "--> " << hash[now] << " (" << now->name() << "=" << now->val << ") --> ";
+		if (found) std::cout << "OUTPUT";
+		else if (now->output.empty()) std::cout << "VOID";
+		std::cout << std::endl;
+
+	}
+}
+
+void circuit::remove_void() {
+	int next_num(1);
+	std::map<const gate*, int> hash;
+	std::queue<const gate*> que;
+	std::queue<const gate*> voidque;
+	std::unordered_set<const gate*> set;
+	for (auto g : in) {
+		hash[g] = next_num++;
+		que.push(g);
+		set.insert(g);
+	}
+	for (auto g : out) hash[g] = next_num++;
+	while (!que.empty()) {
+		const gate* now(que.front());
+		que.pop();
+
+		for (auto g : now->output) {
+			if (set.find(g) == set.end()) {
+				if (hash.find(g) == hash.end()) hash[g] = next_num++;
+				que.push(g);
+				set.insert(g);
+			}
+		}
+
 		if (now->output.empty()) {
 			bool found(false);
 			for (auto g : out) {
@@ -244,27 +286,81 @@ void circuit::print() const {
 					break;
 				}
 			}
-			if (found) std::cout << "OUTPUT" << std::endl;
-			else std::cout << "VOID" << std::endl;
-		} else {
-			for (auto g : now->output) {
-				if (set.find(g) == set.end()) {
-					if (hash.find(g) == hash.end()) hash[g] = next_num++;
-					que.push(g);
-					set.insert(g);
-				}
-				std::cout << hash[g] << ", ";
-			}
+			int rank(hash[now]);
+			if (!found) voidque.push(now);
+		}
+	}
+	while (!voidque.empty()) {
+		const gate* now(voidque.front());
+		voidque.pop();
+		int rank = hash[now];
+		std::vector<gate*> ingate;
+		if (now->type == gate::INPUT) throw "INPUT gate not used.";
+		if (now->input[0] == nullptr) throw "Left input wire not connected.";
+		else ingate.push_back(now->input[0]);
+		if (now->input[1] == nullptr) {
+			if (now->type != gate::NOT) throw "Right input wire not connected.";
+		} else ingate.push_back(now->input[1]);
+
+		for (gate* g : ingate) {
 			bool found(false);
-			for (auto g : out) {
-				if (g == now) {
+			for (auto itr(g->output.begin()); itr != g->output.end(); ++itr) {
+				if (*itr == now) {
 					found = true;
+					g->output.erase(itr);
 					break;
 				}
 			}
-			if (found) std::cout << "OUTPUT" << std::endl;
-			std::cout << std::endl;
+			if (!found) throw "Not in the output gate list.";
+			if (g->output.empty()) {
+				bool isoutput(false);
+				for (auto gout : out) {
+					if (g == gout) {
+						isoutput = true;
+						break;
+					}
+				}
+				if (!isoutput) voidque.push(g);
+			}
 		}
+
+		delete now;
+	}
+}
+
+void circuit::save(std::ostream& stream) {
+	int next_num(1);
+	std::map<const gate*, int> hash;
+	std::queue<const gate*> que;
+	std::unordered_set<const gate*> set;
+	for (auto g : in) {
+		hash[g] = next_num++;
+		que.push(g);
+		set.insert(g);
+	}
+	for (auto g : out) hash[g] = next_num++;
+	while (!que.empty()) {
+		const gate* now(que.front());
+		que.pop();
+		stream << hash[now] << " " << now->type_name() << " --> ";
+		for (auto g : now->output) {
+			if (set.find(g) == set.end()) {
+				if (hash.find(g) == hash.end()) hash[g] = next_num++;
+				que.push(g);
+				set.insert(g);
+			}
+			stream << hash[g] << " ";
+		}
+		bool found(false);
+		for (auto g : out) {
+			if (g == now) {
+				found = true;
+				break;
+			}
+		}
+		if (found) stream << "OUTPUT";
+		else if (now->output.empty()) stream << "VOID";
+		std::cout << std::endl;
 	}
 }
 
@@ -375,6 +471,27 @@ std::string gate::name() const {
 		return "INPUT" + nm;
 	case gate::END_OF_TYPE:
 		return "END_OF_TYPE" + nm;
+	default:
+		throw "Invaild gate type.";
+	}
+	throw "WTF have you done???";
+	return "";
+}
+
+std::string gate::type_name() const {
+	switch (type) {
+	case gate::NOT:
+		return "NOT";
+	case gate::AND:
+		return "AND";
+	case gate::OR:
+		return "OR";
+	case gate::XOR:
+		return "XOR";
+	case gate::INPUT:
+		return "INPUT";
+	case gate::END_OF_TYPE:
+		return "END_OF_TYPE";
 	default:
 		throw "Invaild gate type.";
 	}
