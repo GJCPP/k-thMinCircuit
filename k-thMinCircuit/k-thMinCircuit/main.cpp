@@ -14,6 +14,7 @@ int main() {
 	//demo_bitadder();
 	//test_kmin();
 	//test_comparison();
+	//test_less();
 	//test_int_adder();
 	//test_exint_adder();
 	//test_selector();

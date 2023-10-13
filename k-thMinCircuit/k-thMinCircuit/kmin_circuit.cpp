@@ -107,7 +107,7 @@ kmin_circuit::kmin_circuit(int n, int l)
 		assert(sum.size() == logn);
 
 
-		compare_circuit comp(logn);
+		less_circuit comp(logn);
 		for (int j(0); j != logn; ++j) comp.in[j]->concat(sum[j]);
 		for (int j(0); j != logn; ++j) comp.in[j + logn]->concat(k[j]);
 		gate* lesser = comp.out[0];
@@ -149,6 +149,7 @@ void test_kmin_circuit() {
 	int ik;
 	kmin_circuit C(n, l);
 	C.check();
+	std::cout << C.size();
 	std::vector<bool> val[n];
 	std::vector<bool> k;
 	bool wrong(false);
@@ -185,5 +186,4 @@ void test_kmin_circuit() {
 	}
 	if (wrong) std::cout << "test_kmin_circuit: wrong." << std::endl;
 	else std::cout << "test_kmin_circuit: passed." << std::endl;
-	std::cout << C.size();
 }
